@@ -1,1 +1,2 @@
-@echo "TODO: Finish makefile"
+all:
+	@echo "TODO: Finish makefile"
