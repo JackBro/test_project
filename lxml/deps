@@ -1,0 +1,4 @@
+cython
+libxml2-dev
+libxslt-dev
+libz-dev

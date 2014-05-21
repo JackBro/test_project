@@ -1,4 +1,4 @@
-setuptools
-easy_install
 _markerlib
+easy_install
 pkg_resources
+setuptools
