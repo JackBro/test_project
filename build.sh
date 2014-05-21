@@ -9,4 +9,4 @@ cd ./numpy && ./build.sh && cd ..
 cd ./posix-ipc && ./build.sh && cd ..
 cd ./pycrypto && ./build.sh && cd ..
 cd ./pyopenssl && ./build.sh && cd ..
-
+zip binaries.zip **/bin/*
