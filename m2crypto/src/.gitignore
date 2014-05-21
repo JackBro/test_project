@@ -1,0 +1,13 @@
+.tox
+*.pyc
+*~
+/build
+/dist
+/SWIG/_m2crypto.py
+/SWIG/_m2crypto_wrap.c
+/M2Crypto.egg-info
+/EGG-INFO
+*.so
+tests/randpool.dat
+tests/sig.p7
+tests/sig.p7s

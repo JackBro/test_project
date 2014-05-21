@@ -1,0 +1,20 @@
+language: python
+
+python:
+  - 2.6
+  - 2.7
+  - 3.2
+  - 3.3
+  - pypy
+
+install:
+    pip install --use-mirrors -r requirements.txt
+
+script:
+  - python -u setup.py clean
+  - CFLAGS="-O0 -g" python -u setup.py build_ext --inplace
+  - CFLAGS="-O0 -g" PYTHONUNBUFFERED=x make test
+
+matrix:
+  allow_failures:
+    - python: pypy

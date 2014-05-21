@@ -1,0 +1,6 @@
+include SWIG/*.i
+include SWIG/*.def
+include CHANGES LICENSE epydoc.conf
+recursive-include test *.py *.pem *.der *.b64 README
+include doc/*.html
+recursive-include examples *
