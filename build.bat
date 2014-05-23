@@ -33,3 +33,7 @@ cd ..
 cd pyopenssl
 cmd /c build.bat
 cd ..
+
+cd PyWin32
+cmd /c build.bat
+cd ..
