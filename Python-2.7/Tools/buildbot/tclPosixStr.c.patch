@@ -1,0 +1,38 @@
+@@ -345,5 +345,5 @@
+ #endif
+ #if defined(EPFNOSUPPORT) && (!defined(ENOLCK) || (ENOLCK != EPFNOSUPPORT))
+-    case EPFNOSUPPORT: return "EPFNOSUPPORT";
++    // case EPFNOSUPPORT: return "EPFNOSUPPORT";
+ #endif
+ #ifdef EPIPE
+@@ -405,5 +405,5 @@
+ #endif
+ #ifdef ESOCKTNOSUPPORT
+-    case ESOCKTNOSUPPORT: return "ESOCKTNOSUPPORT";
++    // case ESOCKTNOSUPPORT: return "ESOCKTNOSUPPORT";
+ #endif
+ #ifdef ESPIPE
+@@ -793,5 +793,5 @@
+ #endif
+ #if defined(EPFNOSUPPORT) && (!defined(ENOLCK) || (ENOLCK != EPFNOSUPPORT))
+-    case EPFNOSUPPORT: return "protocol family not supported";
++    // case EPFNOSUPPORT: return "protocol family not supported";
+ #endif
+ #ifdef EPIPE
+@@ -853,5 +853,5 @@
+ #endif
+ #ifdef ESOCKTNOSUPPORT
+-    case ESOCKTNOSUPPORT: return "socket type not supported";
++    // case ESOCKTNOSUPPORT: return "socket type not supported";
+ #endif
+ #ifdef ESPIPE
+diff -r -Z -U 2 tcl-8.5.2.1/win/makefile.vc /home/Nick/development/debug/tcl-8.5.2.1/win/makefile.vc
+--- tcl-8.5.2.1/win/makefile.vc 2008-06-12 09:01:20.765751000 -0700
++++ /home/Nick/development/debug/tcl-8.5.2.1/win/makefile.vc    2013-10-05 09:10:03.859581600 -0700
+@@ -449,5 +449,5 @@
+
+ !if $(DEBUG)
+-ldebug = -debug:full -debugtype:cv
++ldebug = -debugtype:cv
+ !else
+ ldebug = -release -opt:ref -opt:icf,3

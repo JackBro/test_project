@@ -1,0 +1,7 @@
+@@ -473,5 +473,5 @@
+
+ !if $(DEBUG)
+-ldebug = -debug:full -debugtype:cv
++ldebug = -debugtype:cv
+ !else
+ ldebug = -release -opt:ref -opt:icf,3
