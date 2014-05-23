@@ -76,6 +76,28 @@ The running greenlet's stack_start is undefined but not NULL.
      using the dictionary key 'ts_curkey'.
 */
 
+/* Python 2.3 support */
+#ifndef Py_VISIT
+#define Py_VISIT(o) \
+	if (o) { \
+		int err; \
+		if ((err = visit((PyObject *)(o), arg))) { \
+			return err; \
+		} \
+	}
+#endif /* !Py_VISIT */
+
+#ifndef Py_CLEAR
+#define Py_CLEAR(op) \
+	do { \
+		if (op) { \
+			PyObject *tmp = (PyObject *)(op); \
+			(op) = NULL; \
+			Py_DECREF(tmp); \
+		} \
+	} while (0)
+#endif /* !Py_CLEAR */
+
 /* Python <= 2.5 support */
 #if PY_MAJOR_VERSION < 3
 #ifndef Py_REFCNT
@@ -941,10 +963,14 @@ static int green_clear(PyGreenlet* self)
 }
 #endif
 
-static void green_dealloc_safe(PyGreenlet* self)
+static void green_dealloc(PyGreenlet* self)
 {
 	PyObject *error_type, *error_value, *error_traceback;
 
+#if GREENLET_USE_GC
+	PyObject_GC_UnTrack((PyObject *)self);
+	Py_TRASHCAN_SAFE_BEGIN(self);
+#endif /* GREENLET_USE_GC */
 	if (PyGreenlet_ACTIVE(self) && self->run_info != NULL && !PyGreenlet_MAIN(self)) {
 		/* Hacks hacks hacks copied from instance_dealloc() */
 		/* Temporarily resurrect the greenlet. */
@@ -991,7 +1017,7 @@ static void green_dealloc_safe(PyGreenlet* self)
 			--Py_TYPE(self)->tp_frees;
 			--Py_TYPE(self)->tp_allocs;
 #endif /* COUNT_ALLOCS */
-			return;
+			goto green_dealloc_end;
 		}
 	}
 	if (self->weakreflist != NULL)
@@ -1003,24 +1029,12 @@ static void green_dealloc_safe(PyGreenlet* self)
 	Py_CLEAR(self->exc_traceback);
 	Py_CLEAR(self->dict);
 	Py_TYPE(self)->tp_free((PyObject*) self);
-}
-
+green_dealloc_end:
 #if GREENLET_USE_GC
-static void green_dealloc(PyGreenlet* self)
-{
-	PyObject_GC_UnTrack((PyObject *)self);
-	if (PyObject_IS_GC((PyObject *)self)) {
-		Py_TRASHCAN_SAFE_BEGIN(self);
-		green_dealloc_safe(self);
-		Py_TRASHCAN_SAFE_END(self);
-	} else {
-		/* This object cannot be garbage collected, so trashcan is not allowed */
-		green_dealloc_safe(self);
-	}
+	Py_TRASHCAN_SAFE_END(self);
+#endif /* GREENLET_USE_GC */
+	return;
 }
-#else
-#define green_dealloc green_dealloc_safe
-#endif
 
 static PyObject* single_result(PyObject* results)
 {
@@ -1215,10 +1229,13 @@ static int green_setdict(PyGreenlet* self, PyObject* val, void* c)
 
 static PyObject* green_getdead(PyGreenlet* self, void* c)
 {
+	PyObject* res;
 	if (PyGreenlet_ACTIVE(self) || !PyGreenlet_STARTED(self))
-		Py_RETURN_FALSE;
+		res = Py_False;
 	else
-		Py_RETURN_TRUE;
+		res = Py_True;
+	Py_INCREF(res);
+	return res;
 }
 
 static PyObject* green_getrun(PyGreenlet* self, void* c)

@@ -388,22 +388,21 @@ PyDragFinish( PyObject *self, PyObject *args )
 	return Py_None;
 }
 
-// @pymethod str|win32api|GetEnvironmentVariable|Retrieves the value of an environment variable.
-// @rdesc Returns None if environment variable is not found
+// @pymethod string|win32api|GetEnvironmentVariable|Retrieves the value of an environment variable.
+// @comm Returns None if environment variable is not found
 static PyObject *
 PyGetEnvironmentVariable( PyObject *self, PyObject *args )
 {
 	TCHAR *szVar;
 	PyObject *obVar, *ret=NULL;
 	if (!PyArg_ParseTuple(args, "O:GetEnvironmentVariable", 
-	           &obVar)) // @pyparm str|variable||The variable to get
+	           &obVar)) // @pyparm string|variable||The variable to get
 		return NULL;
 	if (!PyWinObject_AsTCHAR(obVar, &szVar, FALSE))
 		return NULL;
 	// @pyseeapi GetEnvironmentVariable
 	PyW32_BEGIN_ALLOW_THREADS
 	DWORD size = GetEnvironmentVariable(szVar, NULL, 0);
-	PyW32_END_ALLOW_THREADS
 	TCHAR *pResult = NULL;
 	if (!size){
 		Py_INCREF(Py_None);
@@ -412,70 +411,15 @@ PyGetEnvironmentVariable( PyObject *self, PyObject *args )
 	else{
 		pResult = (TCHAR *)malloc(sizeof(TCHAR) * size);
 		if (pResult==NULL)
-			PyErr_NoMemory();
+			PyErr_NoMemory();	// ??? does this need to hold thread lock ???
 		else{
-			PyW32_BEGIN_ALLOW_THREADS
 			GetEnvironmentVariable(szVar, pResult, size);
-			PyW32_END_ALLOW_THREADS
 			ret = PyWinObject_FromTCHAR(pResult);
 			}
 		}
+	PyW32_END_ALLOW_THREADS
 
 	PyWinObject_FreeTCHAR(szVar);
-	if (pResult)
-		free(pResult);
-	return ret;
-}
-
-// @pymethod <o PyUnicode>|win32api|GetEnvironmentVariableW|Retrieves the unicode value of an environment variable.
-// @rdesc Returns None if environment variable is not found
-// @pyseeapi GetEnvironmentVariableW
-static PyObject *
-PyGetEnvironmentVariableW( PyObject *self, PyObject *args )
-{
-	TmpWCHAR Name;
-	PyObject *obName;
-	if (!PyArg_ParseTuple(args, "O:GetEnvironmentVariableW", 
-	    &obName)) // @pyparm str|Name||The variable to retrieve
-		return NULL;
-	if (!PyWinObject_AsWCHAR(obName, &Name))
-		return NULL;
-
-	DWORD returned_size, allocated_size = 0;
-	WCHAR *pResult = NULL;
-	PyObject *ret = NULL;
-	// Call in loop to account for race condition where env var is changed between calls
-	while(TRUE){
-		if (pResult)
-			free(pResult);
-		if (allocated_size){
-			// returned_size includes NULL terminator
-			pResult = (WCHAR *)malloc(allocated_size * sizeof(WCHAR));
-			if (pResult == NULL){
-				PyErr_NoMemory();
-				break;
-				}
-			}
-		Py_BEGIN_ALLOW_THREADS
-		returned_size = GetEnvironmentVariableW(Name, pResult, allocated_size);
-		Py_END_ALLOW_THREADS
-		if (!returned_size){
-			DWORD err = GetLastError();
-			if (err == ERROR_ENVVAR_NOT_FOUND){
-				Py_INCREF(Py_None);
-				ret = Py_None;
-				}
-			else
-				PyWin_SetAPIError("GetEnvironmentVariableW", err);
-			break;
-			}
-		// Var may have been changed between calls, check that value still fits in buffer
-		if (returned_size < allocated_size){
-			ret = PyWinObject_FromWCHAR(pResult, returned_size);
-			break;
-			}
-		allocated_size = returned_size;
-		}
 	if (pResult)
 		free(pResult);
 	return ret;
@@ -504,27 +448,6 @@ PySetEnvironmentVariable(PyObject *self, PyObject *args)
 	PyWinObject_FreeTCHAR(key);
 	PyWinObject_FreeTCHAR(val);
 	return ret;
-}
-
-// @pymethod |win32api|SetEnvironmentVariableW|Creates, deletes, or changes the value of an environment variable.
-static PyObject *
-PySetEnvironmentVariableW(PyObject *self, PyObject *args)
-{
-	TmpWCHAR Name, Value;
-	PyObject *obName, *obValue;
-	if (!PyArg_ParseTuple(args, "OO:SetEnvironmentVariableW", 
-		&obName,		// @pyparm str|Name||Name of the environment variable
-		&obValue))		// @pyparm str|Value||Value to be set, or None to remove variable
-		return NULL;
-	// @pyseeapi SetEnvironmentVariable
-	if (!PyWinObject_AsWCHAR(obName, &Name))
-		return NULL;
-	if (!PyWinObject_AsWCHAR(obValue, &Value, TRUE))
-		return NULL;
-	if (!SetEnvironmentVariableW(Name, Value))
-		return PyWin_SetAPIError("SetEnvironmentVariableW");
-	Py_INCREF(Py_None);
-	return Py_None;
 }
 
 // @pymethod string|win32api|ExpandEnvironmentStrings|Expands environment-variable strings and replaces them with their defined values. 
@@ -2266,7 +2189,7 @@ PyGetSystemInfo(PyObject * self, PyObject * args)
 static PyObject *
 PyGetNativeSystemInfo(PyObject * self, PyObject * args)
 {
-	CHECK_PFN(GetNativeSystemInfo);
+	CHECK_PFN(SetSystemPowerState);
 	if (!PyArg_ParseTuple(args, ":GetNativeSystemInfo"))
 		return NULL;
 	// @pyseeapi GetNativeSystemInfo
@@ -3623,25 +3546,6 @@ PyWinObject_AsRegistryValue(PyObject *value, DWORD typ, BYTE **retDataBuf, DWORD
 					}
 				}
 			return true;
-
-		case REG_QWORD:
-			*retDataSize=sizeof(ULONGLONG);
-			*retDataBuf = (BYTE *)PyMem_MALLOC(*retDataSize);
-			if (*retDataBuf==NULL){
-				PyErr_NoMemory();
-				return false;
-			}
-			if (value==Py_None){
-				*(ULONGLONG *)*retDataBuf=0;
-				return true;
-				}
-			* (ULONGLONG *)*retDataBuf=PyLong_AsUnsignedLongLong(value);
-			if (* (ULONGLONG *)*retDataBuf == -1 && PyErr_Occurred()){
-				PyMem_Free(*retDataBuf);
-				*retDataBuf=NULL;
-				return false;
-				}
-			return true;
 		case REG_SZ:
 		case REG_EXPAND_SZ:{
 			*retDataBuf=NULL;
@@ -3688,15 +3592,9 @@ PyWinObject_FromRegistryValue(BYTE *retDataBuf, DWORD retDataSize, DWORD typ)
 	switch (typ) {
 		case REG_DWORD:
 			if (retDataSize==0)
-				obData = PyInt_FromLong(0);
-			else	// ??? Should be returned as unsigned ???
-				obData = PyInt_FromLong(*(int *)retDataBuf);
-			break;
-		case REG_QWORD:
-			if (retDataSize==0)
-				obData = PyInt_FromLong(0);
+				obData = Py_BuildValue("i", 0);
 			else
-				obData = PyLong_FromUnsignedLongLong(*(ULONGLONG *)retDataBuf);
+				obData = Py_BuildValue("i", *(int *)retDataBuf);
 			break;
 		case REG_SZ:
 		case REG_EXPAND_SZ:{
@@ -4401,8 +4299,6 @@ PyRegSetValueEx( PyObject *self, PyObject *args )
 	// @flag REG_BINARY|Binary data in any form. 
 	// @flag REG_DWORD|A 32-bit number. 
 	// @flag REG_DWORD_LITTLE_ENDIAN|A 32-bit number in little-endian format. This is equivalent to REG_DWORD.<nl>In little-endian format, a multi-byte value is stored in memory from the lowest byte (the little end) to the highest byte. For example, the value 0x12345678 is stored as (0x78 0x56 0x34 0x12) in little-endian format. 
-	// @flag REG_QWORD|A 64-bit number. 
-	// @flag REG_QWORD_LITTLE_ENDIAN|A 64-bit number in little-endian format. This is equivalent to REG_QWORD.<nl>In little-endian format, a multi-byte value is stored in memory from the lowest byte (the little end) to the highest byte. For example, the value 0x12345678 is stored as (0x78 0x56 0x34 0x12) in little-endian format.
 	// Windows NT and Windows 95 are designed to run on little-endian computer architectures. A user may connect to computers that have big-endian architectures, such as some UNIX systems. 
 	// @flag REG_DWORD_BIG_ENDIAN|A 32-bit number in big-endian format.
 	// In big-endian format, a multi-byte value is stored in memory from the highest byte (the big end) to the lowest byte. For example, the value 0x12345678 is stored as (0x12 0x34 0x56 0x78) in big-endian format. 
@@ -6410,13 +6306,7 @@ static struct PyMethodDef win32api_functions[] = {
 	{"GetDiskFreeSpaceEx",	PyGetDiskFreeSpaceEx, 1}, // @pymeth GetDiskFreeSpaceEx|Retrieves information about a disk.
 	{"GetDllDirectory",		PyGetDllDirectory, METH_NOARGS}, // @pymeth GetDllDirectory|Retrieves the DLL search path
 	{"GetDomainName",		PyGetDomainName, 1}, 	// @pymeth GetDomainName|Returns the current domain name
-	// @pymeth GetEnvironmentVariable|Retrieves the value of an environment variable.
-#ifdef UNICODE
-	{"GetEnvironmentVariable", PyGetEnvironmentVariableW, 1}, 
-#else
-	{"GetEnvironmentVariable", PyGetEnvironmentVariable, 1},
-#endif
-	{"GetEnvironmentVariableW", PyGetEnvironmentVariableW, 1}, // @pymeth GetEnvironmentVariableW|Retrieves the value of an environment variable.
+	{"GetEnvironmentVariable", PyGetEnvironmentVariable, 1}, // @pymeth GetEnvironmentVariable|Retrieves the value of an environment variable.
 	{"GetFileAttributes",   PyGetFileAttributes,1}, // @pymeth GetFileAttributes|Retrieves the attributes for the named file.
 	{"GetFileVersionInfo",	PyGetFileVersionInfo, 1}, //@pymeth GetFileVersionInfo|Retrieves string version info
 	{"GetFocus",            PyGetFocus,         1}, // @pymeth GetFocus|Retrieves the handle of the keyboard focus window associated with the thread that called the method. 
@@ -6555,13 +6445,7 @@ static struct PyMethodDef win32api_functions[] = {
 	{"SetClassWord",       PySetClassWord,1}, // @pymeth SetClassWord|Replaces the specified 32-bit (long) value at the specified offset into the extra class memory for the window.
 	{"SetClassWord",       PySetWindowWord,1}, // @pymeth SetWindowWord|
 	{"SetCursor",           PySetCursor,1}, // @pymeth SetCursor|Set the cursor to the HCURSOR object.
-	// @pymeth SetEnvironmentVariable|Creates, deletes, or changes the value of an environment variable.
-#ifdef UNICODE
-	{"SetEnvironmentVariable", PySetEnvironmentVariableW,1},
-#else
 	{"SetEnvironmentVariable", PySetEnvironmentVariable,1}, // @pymeth SetEnvironmentVariable|Creates, deletes, or changes the value of an environment variable.
-#endif
-	{"SetEnvironmentVariableW", PySetEnvironmentVariableW,1}, // @pymeth SetEnvironmentVariableW|Creates, deletes, or changes the value of an environment variable.
 	{"SetHandleInformation",	PySetHandleInformation,1}, // @pymeth SetHandleInformation|Sets a handles's flags
 	{"SetStdHandle",	PySetStdHandle,	1}, // @pymeth SetStdHandle|Sets a handle for the standard input, standard output, or standard error device
 	{"SetSystemPowerState",	PySetSystemPowerState,	1}, // @pymeth SetSystemPowerState|Powers machine down to a suspended state

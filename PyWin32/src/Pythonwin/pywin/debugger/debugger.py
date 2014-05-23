@@ -651,7 +651,10 @@ class Debugger(debugger_parent):
 				try:
 					if start_stepping: self.skipBotFrame = SKIP_STEP
 					else: self.skipBotFrame = SKIP_RUN
-					exec cmd in globals, locals
+					if sys.version_info > (2,2):
+						exec cmd in globals, locals
+					else:
+						_doexec(cmd, globals, locals)
 				except bdb.BdbQuit:
 					pass
 			finally:
@@ -983,3 +986,6 @@ class Debugger(debugger_parent):
 			line = linecache.getline(filename, lineno)
 			print "%s(%d): %s" % (os.path.basename(filename), lineno, line[:-1].expandtabs(4))
 			return 0
+
+def _doexec(cmd, globals, locals):
+	exec cmd in globals, locals

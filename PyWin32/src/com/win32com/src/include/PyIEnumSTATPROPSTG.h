@@ -21,29 +21,3 @@ protected:
 	PyIEnumSTATPROPSTG(IUnknown *pdisp);
 	~PyIEnumSTATPROPSTG();
 };
-
-// ---------------------------------------------------
-//
-// Gateway Declaration
-class PyGEnumSTATPROPSTG : public PyGatewayBase, public IEnumSTATPROPSTG
-{
-protected:
-	PyGEnumSTATPROPSTG(PyObject *instance) : PyGatewayBase(instance) { ; }
-	PYGATEWAY_MAKE_SUPPORT2(PyGEnumSTATPROPSTG, IEnumSTATPROPSTG, IID_IEnumSTATPROPSTG, PyGatewayBase)
-
-	// IEnumSTATPROPSTG
-	STDMETHOD(Next)(
-		ULONG celt,
-		STATPROPSTG * rgelt,
-		ULONG * pceltFetched);
-
-	STDMETHOD(Skip)(
-		ULONG celt);
-
-	STDMETHOD(Reset)(
-		void);
-
-	STDMETHOD(Clone)(
-		IEnumSTATPROPSTG ** ppenum);
-
-};

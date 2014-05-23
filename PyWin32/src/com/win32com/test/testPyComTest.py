@@ -13,8 +13,12 @@ from win32com.client import constants, DispatchBaseClass, CastTo, VARIANT
 from win32com.test.util import RegisterPythonServer
 from pywin32_testutil import str2memory
 import datetime
-import decimal
-import win32timezone
+try:
+    import decimal
+except ImportError:
+    import win32com.decimal_23 as decimal
+if sys.version_info > (2,4):
+    import win32timezone # win32timezone doesn't import on 2.3...
 
 importMsg = "**** PyCOMTest is not installed ***\n  PyCOMTest is a Python test specific COM client and server.\n  It is likely this server is not installed on this machine\n  To install the server, you must get the win32com sources\n  and build it using MS Visual C++"
 

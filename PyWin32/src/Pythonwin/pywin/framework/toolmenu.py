@@ -177,10 +177,7 @@ class ToolMenuPropPage(dialog.PropertyPage):
 		itemLook = 0
 		while 1:
 			try:
-				text = self.listControl.GetItemText(itemLook, 0);
-				if not text:
-					break
-				items.append( (text, self.listControl.GetItemText(itemLook, 1)) )
+				items.append( ( self.listControl.GetItemText(itemLook, 0), self.listControl.GetItemText(itemLook, 1) ) )
 			except win32ui.error:
 				# no more items!
 				break

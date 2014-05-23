@@ -145,58 +145,29 @@ BOOL PyCom_VariantFromPyObject(PyObject *obj, VARIANT *var)
 	}
 	else if (PyLong_Check(obj))
 	{
-		int sign = _PyLong_Sign(obj);
-		size_t nbits = _PyLong_NumBits(obj);
-		if (nbits == (size_t)-1 && PyErr_Occurred())
+		__int64 lval = PyLong_AsLongLong(obj);
+		if (PyErr_Occurred() && !PyErr_ExceptionMatches(PyExc_OverflowError))
 			return FALSE;
-		if (64 < nbits) {
+		if (PyErr_Occurred()) {
+			PyErr_Clear();
 			// too big for 64 bits!  Use a double.
+			double dval = PyLong_AsDouble(obj);
 			V_VT(var) = VT_R8;
-			V_R8(var) = PyLong_AsDouble(obj);
-		}
-		else if (32 < nbits) {
-			// between 32 and 64 use longlong
-			// signed and using all bits use unsigned
-			if (sign > 0 && 64 == nbits) {
-				V_VT(var) = VT_UI8;
-				V_UI8(var) = PyLong_AsUnsignedLongLong(obj);
-			} else {
-				// Negative so use signed
-				V_VT(var) = VT_I8;
-				V_I8(var) = PyLong_AsLongLong(obj);
-				// Problem if value is between LLONG_MIN and -ULLONG_MAX
-				if (PyErr_Occurred()) {
-					if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
-						// Take now double
-						PyErr_Clear();
-						V_VT(var) = VT_R8;
-						V_R8(var) = PyLong_AsDouble(obj);
-					} else {
-						return FALSE;
-					}
-				}
-			}
+			V_R8(var) = dval;
 		} else {
-			// less then 32 bit use standard long
-			// positive and using all bits so unsigned
-			if (sign > 0 && 32 == nbits) {
-				V_VT(var) = VT_UI4;
-				V_UI4(var) = PyLong_AsUnsignedLong(obj);
-			} else {
-				// Negative so use signed
+			// 64 bits is OK - but if it fits in 32 we will
+			// use that.  Prefer VT_I4 if possible as VBScript
+			// etc like it better.
+			if (lval >= LONG_MIN && lval <= LONG_MAX) {
 				V_VT(var) = VT_I4;
-				V_I4(var) = PyLong_AsLong(obj);
-				// Problem if value is between LONG_MIN and -ULONG_MAX
-				if (PyErr_Occurred()) {
-					if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
-						// Take now double
-						PyErr_Clear();
-						V_VT(var) = VT_I8;
-						V_I8(var) = PyLong_AsLongLong(obj);
-					} else {
-						return FALSE;
-					}
-				}
+				V_I4(var) = (long)lval;
+			// OK, we know it must be > LONG_MAX, but zero is clearer
+			} else if (lval >= 0 && lval <= ULONG_MAX) {
+				V_VT(var) = VT_UI4;
+				V_UI4(var) = (unsigned long)lval;
+			} else {
+				V_VT(var) = VT_I8;
+				V_I8(var) = lval;
 			}
 		}
 	}
@@ -245,12 +216,6 @@ BOOL PyCom_VariantFromPyObject(PyObject *obj, VARIANT *var)
 	else if (obj->ob_type == &PyOleEmptyType) {
 		bGoodEmpty = TRUE;
 	}
-// code changed by ssc
-	else if (obj->ob_type == &PyOleNothingType) {
-		V_VT(var) = VT_DISPATCH;
-		V_DISPATCH(var) = NULL;
-	}
-// end code changed by ssc
 	else if (obj->ob_type == &PyOleArgNotFoundType)
 	{
 		// use default parameter
@@ -295,8 +260,7 @@ BOOL PyCom_VariantFromPyObject(PyObject *obj, VARIANT *var)
 			return FALSE;
 		V_VT(var) = VT_RECORD;
 	}
-	// Decimal class from new _decimal module in Python 3.3 shows different name
-	else if (strcmp(obj->ob_type->tp_name, "Decimal")==0 || strcmp(obj->ob_type->tp_name, "decimal.Decimal")==0)
+	else if (strcmp(obj->ob_type->tp_name, "Decimal")==0)
 	{
 		if (!PyObject_AsCurrency(obj, &V_CY(var)))
 			return FALSE;
@@ -398,22 +362,6 @@ PyObject *PyCom_PyObjectFromVariant(const VARIANT *var)
 				break;
 			}
 			result = PyInt_FromLong(V_I4(&varValue));
-			break;
-
-		case VT_UI8:
-			// The result may be too large for a simple "long". If so,
-			// we must return a long.
-			if (V_UI8(&varValue) <= LONG_MAX)
-				result = PyInt_FromLong((long)V_UI8(&varValue));
-			else
-				result = PyLong_FromUnsignedLongLong(V_UI8(&varValue));
-			break;
-
-		case VT_I8:
-			if ((LONG_MIN <= V_I8(&varValue)) && (V_I8(&varValue) <= LONG_MAX))
-				result = PyInt_FromLong((long)V_I8(&varValue));
-			else
-				result = PyLong_FromLongLong(V_I8(&varValue));
 			break;
 
 		case VT_HRESULT:

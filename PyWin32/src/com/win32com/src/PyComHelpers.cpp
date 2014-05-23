@@ -55,6 +55,12 @@ PyObject *get_Decimal_class(void)
 		PyErr_Clear();
 		decimal_module = PyImport_ImportModule("decimal");
 		}
+
+	// Look for our own copy included in Pywin32 for Python 2.3
+	if (decimal_module==NULL){
+		PyErr_Clear();
+		decimal_module=PyImport_ImportModule("win32com.decimal_23");
+		}
 	if (decimal_module==NULL)
 		return NULL;
 	return PyObject_GetAttrString(decimal_module, "Decimal");
@@ -412,15 +418,4 @@ PyObject *PyCom_PyObjectFromSTATPROPSETSTG(STATPROPSETSTG *pStg)
 	Py_XDECREF(obctime);
 	Py_XDECREF(obatime);
 	return ret;
-}
-
-BOOL PyCom_PyObjectAsSTATPROPSETSTG(PyObject *obstat, STATPROPSETSTG *pstat) 
-{
-	return PyArg_ParseTuple(obstat, "O&O&kO&O&O&:STATPROPSETSTG",
-			PyWinObject_AsIID, &pstat->fmtid,
-			PyWinObject_AsIID, &pstat->clsid,
-			&pstat->grfFlags,
-			PyWinObject_AsFILETIME, &pstat->mtime,
-			PyWinObject_AsFILETIME, &pstat->ctime,
-			PyWinObject_AsFILETIME, &pstat->atime);
 }

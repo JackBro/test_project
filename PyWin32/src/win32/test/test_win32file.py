@@ -11,7 +11,12 @@ import shutil
 import socket
 import datetime
 import random
-import win32timezone
+
+try:
+    import win32timezone
+except SyntaxError:
+    # win32timezone uses decorators and isn't compatible with py2.3
+    assert sys.version_info < (2,4)
 
 try:
     set
@@ -37,7 +42,10 @@ class TestReadBuffer(unittest.TestCase):
 
 class TestSimpleOps(unittest.TestCase):
     def testSimpleFiles(self):
-        fd, filename = tempfile.mkstemp()
+        try:
+            fd, filename = tempfile.mkstemp()
+        except AttributeError:
+            self.fail("This test requires Python 2.3 or later")
         os.close(fd)
         os.unlink(filename)
         handle = win32file.CreateFile(filename, win32file.GENERIC_WRITE, 0, None, win32con.CREATE_NEW, 0, None)
@@ -717,7 +725,11 @@ class TestConnect(unittest.TestCase):
 class TestTransmit(unittest.TestCase):
     def test_transmit(self):
         import binascii
-        bytes = os.urandom(1024*1024)
+        try:
+            bytes = os.urandom(1024*1024)
+        except AttributeError:
+            # must be py2.3...
+            bytes = ''.join([chr(random.randint(0,255)) for _ in range(5)])
         val = binascii.hexlify(bytes)
         val_length = len(val)
         f = tempfile.TemporaryFile()

@@ -10,7 +10,6 @@
 %{
 #include <edkmdb.h>
 #define INITGUID
-#include <initguid.h>
 #define USES_IID_IExchangeManageStore
 #include <edkguid.h>
 %}
@@ -76,10 +75,14 @@ PyObject *PyIExchangeManageStore::CreateStoreEntryID(PyObject *self, PyObject *a
 	Py_END_ALLOW_THREADS
 
 	if (FAILED(hRes))
-		result = OleSetOleError(hRes);
-	else
-		result = Py_BuildValue("s#", sbEID.lpb, sbEID.cb);
+	{
+		OleSetOleError(hRes);
+		goto error;
+	}
 
+	result = Py_BuildValue("s#", sbEID.lpb, sbEID.cb);
+
+error:
 	MAPIFreeBuffer((LPENTRYID)sbEID.lpb);
 	
 	return result;

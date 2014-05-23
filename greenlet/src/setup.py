@@ -15,6 +15,7 @@ try:
     if not (sys.modules.get("setuptools")
             or "develop" in sys.argv
             or "upload" in sys.argv
+            or "fixup" in sys.argv
             or "bdist_egg" in sys.argv
             or "bdist_wheel" in sys.argv
             or "test" in sys.argv):
@@ -81,6 +82,19 @@ class build_ext(_build_ext):
         _build_ext.build_extensions(self)
 
 
+class fixup(Command):
+    user_options = []
+    description = "prevent duplicate uploads and upload for the wrong architecture"
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        del self.distribution.dist_files[:-1]
+
 setup(
     name="greenlet",
     version='0.4.2',
@@ -93,7 +107,7 @@ setup(
     platforms=['any'],
     headers=headers,
     ext_modules=ext_modules,
-    cmdclass=dict(build_ext=build_ext),
+    cmdclass=dict(build_ext=build_ext, fixup=fixup),
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',

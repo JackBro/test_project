@@ -489,9 +489,7 @@ static PyObject *PyEvtOpenChannelEnum(PyObject *self, PyObject *args, PyObject *
 		PyWinObject_AsHANDLE, &session,	// @pyparm <o PyEVT_HANDLE>|Session|None|Handle to a remote session (see <om win32evtlog.EvtOpenSession>), or None for local machine.
 		&flags))						// @pyparm int|Flags|0|Reserved, use only 0
 		return NULL;
-	Py_BEGIN_ALLOW_THREADS
 	enum_handle=EvtOpenChannelEnum(session, flags);
-	Py_END_ALLOW_THREADS
 	if (enum_handle==NULL)
 		return PyWin_SetAPIError("EvtOpenChannelEnum");
 	return PyWinObject_FromEVT_HANDLE(enum_handle);
@@ -511,7 +509,6 @@ static PyObject *PyEvtNextChannelPath(PyObject *self, PyObject *args, PyObject *
 	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&:EvtNextChannelPath", keywords,
 		PyWinObject_AsHANDLE, &enum_handle))	// @pyparm <o PyEVT_HANDLE>|ChannelEnum||Handle to an enumeration as returned by <om win32evtlog.EvtOpenChannelEnum>
 		return NULL;
-	BOOL bsuccess;
 	while (true){
 		if (buf)
 			free(buf);
@@ -519,11 +516,7 @@ static PyObject *PyEvtNextChannelPath(PyObject *self, PyObject *args, PyObject *
 		WCHAR *buf=(WCHAR *)malloc(allocated_size * sizeof(WCHAR));
 		if (!buf)
 			return NULL;
-		
-		Py_BEGIN_ALLOW_THREADS
-		bsuccess = EvtNextChannelPath(enum_handle, allocated_size, buf, &returned_size);
-		Py_END_ALLOW_THREADS
-		if (bsuccess){
+		if (EvtNextChannelPath(enum_handle, allocated_size, buf, &returned_size)){
 			ret=PyWinObject_FromWCHAR(buf);
 			break;
 			}
@@ -562,9 +555,7 @@ static PyObject *PyEvtOpenLog(PyObject *self, PyObject *args, PyObject *kwargs)
 		return NULL;
 	if (!PyWinObject_AsWCHAR(obpath, &path, FALSE))
 		return NULL;
-	Py_BEGIN_ALLOW_THREADS
 	log_handle=EvtOpenLog(session, path, flags);
-	Py_END_ALLOW_THREADS
 	PyWinObject_FreeWCHAR(path);
 	if (log_handle==NULL)
 		return PyWin_SetAPIError("EvtOpenLog");
@@ -591,11 +582,7 @@ static PyObject *PyEvtClearLog(PyObject *self, PyObject *args, PyObject *kwargs)
 		return NULL;
 	if (!PyWinObject_AsWCHAR(obexport_path, &export_path, TRUE))
 		return NULL;
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtClearLog(session, path, export_path, flags);
-	Py_END_ALLOW_THREADS
-	if (bsuccess){
+	if (EvtClearLog(session, path, export_path, flags)){
 		Py_INCREF(Py_None);
 		return Py_None;
 		}
@@ -625,11 +612,7 @@ static PyObject *PyEvtExportLog(PyObject *self, PyObject *args, PyObject *kwargs
 		return NULL;
 	if (!PyWinObject_AsWCHAR(obquery, &query, TRUE))
 		return NULL;
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtExportLog(session, path, query, export_path, flags);
-	Py_END_ALLOW_THREADS
-	if (bsuccess){
+	if (EvtExportLog(session, path, query, export_path, flags)){
 		Py_INCREF(Py_None);
 		return Py_None;
 		}
@@ -655,12 +638,7 @@ static PyObject *PyEvtArchiveExportedLog(PyObject *self, PyObject *args, PyObjec
 		return NULL;
 	if (!PyWinObject_AsWCHAR(obpath, &path, FALSE))
 		return NULL;
-	
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtArchiveExportedLog(session, path, lcid, flags);
-	Py_END_ALLOW_THREADS
-	if (bsuccess){
+	if (EvtArchiveExportedLog(session, path, lcid, flags)){
 		Py_INCREF(Py_None);
 		return Py_None;
 		}
@@ -676,8 +654,6 @@ static PyObject *PyEvtGetExtendedStatus(PyObject *self, PyObject *args)
 	PyObject *ret=NULL;
 	if (!PyArg_ParseTuple(args, ":EvtGetExtendedStatus"))
 		return NULL;
-
-	BOOL bsuccess;
 	while (1){
 		if (msg)
 			free(msg);
@@ -687,10 +663,7 @@ static PyObject *PyEvtGetExtendedStatus(PyObject *self, PyObject *args)
 			PyErr_NoMemory();
 			return NULL;
 			}
-		Py_BEGIN_ALLOW_THREADS
-		bsuccess = EvtGetExtendedStatus(buflen, msg, &bufneeded);
-		Py_END_ALLOW_THREADS
-		if (bsuccess){
+		if (EvtGetExtendedStatus(buflen, msg, &bufneeded)){
 			ret=PyWinObject_FromWCHAR(msg, bufneeded);
 			break;
 			}
@@ -723,9 +696,8 @@ static PyObject *PyEvtQuery(PyObject *self, PyObject *args, PyObject *kwargs)
 		return NULL;
 	if (!PyWinObject_AsWCHAR(obquery, &query, TRUE))
 		return NULL;
-	Py_BEGIN_ALLOW_THREADS
+
 	ret = EvtQuery(session, path, query, flags);
-	Py_END_ALLOW_THREADS
 	if (ret == NULL)
 		return PyWin_SetAPIError("EvtQuery");
 	return PyWinObject_FromEVT_HANDLE(ret);
@@ -754,11 +726,8 @@ static PyObject *PyEvtNext(PyObject *self, PyObject *args, PyObject *kwargs)
 		PyErr_NoMemory();
 		return NULL;
 		}
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtNext(query, nbr_requested, events, timeout, flags, &nbr_returned);
-	Py_END_ALLOW_THREADS
-	if (!bsuccess){
+
+	if (!EvtNext(query, nbr_requested, events, timeout, flags, &nbr_returned)){
 		free(events);
 		DWORD err=GetLastError();
 		if (err == ERROR_NO_MORE_ITEMS)
@@ -800,11 +769,7 @@ static PyObject *PyEvtSeek(PyObject *self, PyObject *args, PyObject *kwargs)
 		PyWinObject_AsHANDLE, &bookmark,	// @pyparm <o PyEVT_HANDLE>|Bookmark|None|Used as seek origin only if Flags contains EvtSeekRelativeToBookmark
 		&timeout))	// @pyparm int|Timeout|0|Reserved, use only 0
 		return NULL;
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtSeek(query, position, bookmark, timeout, flags);
-	Py_END_ALLOW_THREADS
-	if (!bsuccess)
+	if (!EvtSeek(query, position, bookmark, timeout, flags))
 		return PyWin_SetAPIError("EvtSeek");
 	Py_INCREF(Py_None);
 	return Py_None;;
@@ -831,7 +796,6 @@ static PyObject *PyEvtRender(PyObject *self, PyObject *args, PyObject *kwargs)
 		PyErr_Format(PyExc_NotImplementedError,"Rendering values is not yet supported");
 		return NULL;
 		}
-	BOOL bsuccess;
 	while(1){
 		if (buf)
 			free(buf);
@@ -840,11 +804,7 @@ static PyObject *PyEvtRender(PyObject *self, PyObject *args, PyObject *kwargs)
 			PyErr_NoMemory();
 			return NULL;
 			}
-
-		Py_BEGIN_ALLOW_THREADS
-		bsuccess = EvtRender(NULL, event, flags, bufsize, buf, &bufneeded, &propcount);
-		Py_END_ALLOW_THREADS
-		if (bsuccess){
+		if (EvtRender(NULL, event, flags, bufsize, buf, &bufneeded, &propcount)){
 			ret=PyWinObject_FromWCHAR((WCHAR *)buf);
 			break;
 			}
@@ -942,10 +902,8 @@ static PyObject *PyEvtSubscribe(PyObject *self, PyObject *args, PyObject *kwargs
 		if (obuserdata==NULL)
 			return NULL;
 		}
-	Py_BEGIN_ALLOW_THREADS
 	ret = EvtSubscribe(session, signalevent, path, query, bookmark,
 		(void *)obuserdata, pfncallback, flags);
-	Py_END_ALLOW_THREADS
 	if (ret==NULL)
 		return PyWin_SetAPIError("EvtSubscribe");
 	return PyWinObject_FromEVT_HANDLE(ret, obuserdata);
@@ -966,9 +924,7 @@ static PyObject *PyEvtCreateBookmark(PyObject *self, PyObject *args, PyObject *k
 		return NULL;
 	if (!PyWinObject_AsWCHAR(obxml, &xml, TRUE))
 		return NULL;
-	Py_BEGIN_ALLOW_THREADS
 	ret = EvtCreateBookmark(xml);
-	Py_END_ALLOW_THREADS
 	if (ret == NULL)
 		return PyWin_SetAPIError("EvtCreateBookmark");
 	return PyWinObject_FromEVT_HANDLE(ret);
@@ -986,608 +942,14 @@ static PyObject *PyEvtUpdateBookmark(PyObject *self, PyObject *args, PyObject *k
 		PyWinObject_AsHANDLE, &evt))	// @pyparm <o PyEVT_HANDLE>|Event||Handle to an event
 		return NULL;
 
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtUpdateBookmark(bookmark, evt);
-	Py_END_ALLOW_THREADS
-	if (!bsuccess)
+	if (!EvtUpdateBookmark(bookmark, evt))
 		return PyWin_SetAPIError("EvtUpdateBookmark");
 	Py_INCREF(Py_None);
 	return Py_None;
 }
 PyCFunction pfnPyEvtUpdateBookmark = (PyCFunction) PyEvtUpdateBookmark;
 
-PyObject *PyWinObject_FromEVT_VARIANT(PEVT_VARIANT val)
-{
-	if (val->Type & EVT_VARIANT_TYPE_ARRAY){
-		PyErr_SetString(PyExc_NotImplementedError, "EVT_VARIANT arrays not supported yet");
-		return NULL;
-		}
-	DWORD val_type = val->Type & EVT_VARIANT_TYPE_MASK;
-	PyObject *obval = NULL;
-	switch (val_type){
-		case EvtVarTypeNull:
-			Py_INCREF(Py_None);
-			obval = Py_None;
-			break;
-		case EvtVarTypeString:
-			obval = PyWinObject_FromWCHAR(val->StringVal);
-			break;
-		case EvtVarTypeAnsiString:
-			obval = PyWinCoreString_FromString(val->AnsiStringVal);
-			break;
-		case EvtVarTypeSByte:
-			obval = PyLong_FromLong(val->SByteVal);
-			break;
-		case EvtVarTypeByte:
-			obval = PyLong_FromUnsignedLong(val->ByteVal);
-			break;
-		case EvtVarTypeInt16:
-			obval = PyLong_FromLong(val->Int16Val);
-			break;
-		case EvtVarTypeUInt16:
-			obval = PyLong_FromUnsignedLong(val->UInt16Val);
-			break;
-		case EvtVarTypeInt32:
-			obval = PyLong_FromLong(val->Int32Val);
-			break;
-		case EvtVarTypeUInt32:
-			obval = PyLong_FromUnsignedLong(val->UInt32Val);
-			break;
-		case EvtVarTypeInt64:
-			obval = PyLong_FromLongLong(val->Int64Val);
-			break;
-		case EvtVarTypeUInt64:
-			obval = PyLong_FromUnsignedLongLong(val->UInt64Val);
-			break;
-		case EvtVarTypeSingle:
-			obval = PyFloat_FromDouble(val->SingleVal);
-			break;
-		case EvtVarTypeDouble:
-			obval = PyFloat_FromDouble(val->DoubleVal);
-			break;
-		case EvtVarTypeBoolean:
-			obval = PyBool_FromLong(val->BooleanVal);
-			break;
-		case EvtVarTypeBinary:
-			obval = PyString_FromStringAndSize((char *)val->BinaryVal, val->Count);
-			break;
-		case EvtVarTypeGuid:
-			obval = PyWinObject_FromIID(*val->GuidVal);
-			break;
-		case EvtVarTypeSizeT:
-			obval = PyInt_FromSsize_t(val->SizeTVal);
-			break;
-		case EvtVarTypeFileTime:
-			{
-			// FileTimeVal is defined as ULONGLONG for unknown reasons
-			LARGE_INTEGER timestamp;
-			timestamp.QuadPart = val->FileTimeVal;
-			obval = PyWinObject_FromTimeStamp(timestamp);
-			break;
-			}
-		case EvtVarTypeSysTime:
-			obval = PyWinObject_FromSYSTEMTIME(*val->SysTimeVal);
-			break;
-		case EvtVarTypeSid:
-			obval = PyWinObject_FromSID(val->SidVal);
-			break;
-		// case EvtVarTypeHexInt32:
-		// case EvtVarTypeHexInt64:
-		case EvtVarTypeEvtHandle:
-			obval = PyWinObject_FromEVT_HANDLE(val->EvtHandleVal);
-			break;
-		case EvtVarTypeEvtXml:
-			obval = PyWinObject_FromWCHAR(val->XmlVal);
-			break;
-		default:
-			PyErr_Format(PyExc_NotImplementedError, "EVT_VARIANT_TYPE %d not supported yet", val_type);
-		}
-	if (obval == NULL)
-		return NULL;
-	return Py_BuildValue("Nk", obval, val->Type);
-}
-
-// @pyswig (object, int)|EvtGetChannelConfigProperty|Retreives channel configuration information
-// @comm Accepts keyword args
-// @comm Returns the value and type of value (EvtVarType*)
-static PyObject *PyEvtGetChannelConfigProperty(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"ChannelConfig", "PropertyId", "Flags", NULL};
-	EVT_HANDLE config_handle;
-	EVT_CHANNEL_CONFIG_PROPERTY_ID prop_id;
-	DWORD flags = 0;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&i|k:EvtGetChannelConfigProperty", keywords,
-		PyWinObject_AsHANDLE, &config_handle,	// @pyparm <o PyEVT_HANDLE>|ChannelConfig||Config handle as returned by <om win32evtlog.EvtOpenChannelConfig>
-		&prop_id,	// @pyparm int|PropertyId||Property to retreive, one of EvtChannel* constants
-		&flags))	// @pyparm int|Flags|0|Reserved, use only 0
-		return NULL;
-
-	PEVT_VARIANT val = NULL;
-	DWORD buf_size=0, buf_needed, err;
-	Py_BEGIN_ALLOW_THREADS
-	EvtGetChannelConfigProperty(config_handle, prop_id, flags, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	err = GetLastError();
-	if (err != ERROR_INSUFFICIENT_BUFFER)
-		return PyWin_SetAPIError("EvtGetChannelConfigProperty", err);
-	val = (PEVT_VARIANT)malloc(buf_needed);
-	if (val == NULL)
-		return PyErr_Format(PyExc_MemoryError, "Unable to allocate %d bytes", buf_needed);
-	buf_size = buf_needed;
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtGetChannelConfigProperty(config_handle, prop_id, flags, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	PyObject *ret = NULL;
-	if (!bsuccess)
-		PyWin_SetAPIError("EvtGetChannelConfigProperty");
-	else
-		ret = PyWinObject_FromEVT_VARIANT(val);
-	free(val);
-	return ret;
-}
-PyCFunction pfnPyEvtGetChannelConfigProperty = (PyCFunction) PyEvtGetChannelConfigProperty;
-
-// @pyswig <o PyEVT_HANDLE>|EvtOpenChannelConfig|Opens channel configuration
-// @comm Accepts keyword args
-static PyObject *PyEvtOpenChannelConfig(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"ChannelPath", "Session", "Flags", NULL};
-	EVT_HANDLE session = NULL, ret;
-	PyObject *obchannel;
-	TmpWCHAR channel;
-	DWORD flags = 0;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O&k:EvtOpenChannelConfig", keywords,
-		&obchannel,	// @pyparm str|ChannelPath||Channel to be opened
-		PyWinObject_AsHANDLE, &session,	// @pyparm <o PyEVT_HANDLE>|Session|None|Session handle as returned by <om win32evtlog.EvtOpenSession>, or None for local machine
-		&flags))	// @pyparm int|Flags|0|Reserved, use only 0
-		return NULL;
-	if (!PyWinObject_AsWCHAR(obchannel, &channel, FALSE))
-		return NULL;
-	Py_BEGIN_ALLOW_THREADS
-	ret = EvtOpenChannelConfig(session, channel, flags);
-	Py_END_ALLOW_THREADS
-	if (ret == NULL)
-		return PyWin_SetAPIError("EvtOpenChannelConfig");
-	return PyWinObject_FromEVT_HANDLE(ret);
-}
-PyCFunction pfnPyEvtOpenChannelConfig = (PyCFunction) PyEvtOpenChannelConfig;
-
-void PyWinObject_FreeEVT_RPC_LOGIN(EVT_RPC_LOGIN *erl)
-{
-	PyWinObject_FreeWCHAR(erl->Server);
-	PyWinObject_FreeWCHAR(erl->User);
-	PyWinObject_FreeWCHAR(erl->Domain);
-	PyWinObject_FreeWCHAR(erl->Password);
-}
-
-// @object PyEVT_RPC_LOGIN|Tuple containing login credentials for a remote Event Log connection
-// @comm To use current login credentials, pass None for User, Domain, and Password
-// @tupleitem 0|string|Server|Machine to connect to (only required item)
-// @tupleitem 1|string|User|User account to login with, defaults to None
-// @tupleitem 2|string|Domain|Domain of account, defaults to None
-// @tupleitem 3|string|Password|Password, defaults to None
-// @tupleitem 4|int|Flags|Type of authentication, EvtRpcLogin*.  Default is EvtRpcLoginAuthDefault
-BOOL PyWinObject_AsEVT_RPC_LOGIN(PyObject *ob, EVT_RPC_LOGIN *erl)
-{
-	ZeroMemory(erl, sizeof(*erl));
-	if (!PyTuple_Check(ob)){
-		PyErr_Format(PyExc_TypeError, "PyEVT_RPC_LOGIN must be a tuple instead of %s", ob->ob_type->tp_name);
-		return FALSE;
-		}
-	PyObject *observer, *obuser=Py_None, *obdomain=Py_None, *obpassword=Py_None;
-	if (!PyArg_ParseTuple(ob, "O|OOOk", &observer, *obuser, &obdomain, &obpassword, &erl->Flags))
-		return FALSE;
-	if (PyWinObject_AsWCHAR(observer, &erl->Server, FALSE) &&
-		PyWinObject_AsWCHAR(obuser, &erl->User, TRUE) &&
-		PyWinObject_AsWCHAR(obdomain, &erl->Domain, TRUE) &&
-		PyWinObject_AsWCHAR(obpassword, &erl->Password, TRUE))
-		return TRUE;
-
-	PyWinObject_FreeEVT_RPC_LOGIN(erl);
-	return FALSE;
-}
-
-// @pyswig <o PyEVT_HANDLE>|EvtOpenSession|Creates a session used to access the Event Log on another machine
-// @comm Accepts keyword args
-static PyObject *PyEvtOpenSession(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"Login", "LoginClass", "Timeout", "Flags", NULL};
-	EVT_RPC_LOGIN login = {NULL};
-	EVT_HANDLE ret;
-	PyObject *oblogin;
-	EVT_LOGIN_CLASS loginclass = EvtRpcLogin;
-	DWORD flags = 0, timeout = 0;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|ikk:EvtOpenSession", keywords,
-		&oblogin,	// @pyparm <o PyEVT_RPC_LOGIN>|Login||Credentials to be used to access remote machine
-		&loginclass,	// @pyparm int|LoginClass|EvtRpcLogin|Type of login to perform, EvtRpcLogin is only defined value
-		&timeout,	// @pyparm int|Timeout|0|Reserved, use only 0
-		&flags))	// @pyparm int|Flags|0|Reserved, use only 0
-		return NULL;
-
-	if (!PyWinObject_AsEVT_RPC_LOGIN(oblogin, &login))
-		return NULL;
-	Py_BEGIN_ALLOW_THREADS
-	ret = EvtOpenSession(loginclass, &login, timeout, flags);
-	Py_END_ALLOW_THREADS
-	PyWinObject_FreeEVT_RPC_LOGIN(&login);
-	if (ret == NULL)
-		return PyWin_SetAPIError("EvtOpenSession");
-	return PyWinObject_FromEVT_HANDLE(ret);
-}
-PyCFunction pfnPyEvtOpenSession = (PyCFunction) PyEvtOpenSession;
-
-// @pyswig <o PyEVT_HANDLE>|EvtOpenPublisherEnum|Begins an enumeration of event publishers
-// @comm Accepts keyword args
-static PyObject *PyEvtOpenPublisherEnum(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"Session", "Flags", NULL};
-	EVT_HANDLE session=NULL, enum_handle;
-	DWORD flags=0;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O&k:EvtOpenPublisherEnum", keywords,
-		PyWinObject_AsHANDLE, &session,	// @pyparm <o PyEVT_HANDLE>|Session|None|Handle to a remote session (see <om win32evtlog.EvtOpenSession>), or None for local machine.
-		&flags))						// @pyparm int|Flags|0|Reserved, use only 0
-		return NULL;
-	Py_BEGIN_ALLOW_THREADS
-	enum_handle=EvtOpenPublisherEnum(session, flags);
-	Py_END_ALLOW_THREADS
-	if (enum_handle==NULL)
-		return PyWin_SetAPIError("EvtOpenPublisherEnum");
-	return PyWinObject_FromEVT_HANDLE(enum_handle);
-}
-PyCFunction pfnPyEvtOpenPublisherEnum = (PyCFunction) PyEvtOpenPublisherEnum;
-
-// @pyswig str|EvtNextPublisherId|Returns the next publisher from an enumeration
-// @rdesc Returns None at end of enumeration
-// @comm Accepts keyword args
-static PyObject *PyEvtNextPublisherId(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"PublisherEnum", NULL};
-	EVT_HANDLE enum_handle;
-	DWORD allocated_size=256, returned_size, err;
-	WCHAR *buf=NULL;
-	PyObject *ret=NULL;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&:EvtNextPublisherId", keywords,
-		PyWinObject_AsHANDLE, &enum_handle))	// @pyparm <o PyEVT_HANDLE>|PublisherEnum||Handle to an enumeration as returned by <om win32evtlog.EvtOpenPublisherEnum>
-		return NULL;
-	BOOL bsuccess;
-	while (true){
-		if (buf)
-			free(buf);
-		WCHAR *buf=(WCHAR *)malloc(allocated_size * sizeof(WCHAR));
-		if (!buf)
-			return NULL;
-		
-		Py_BEGIN_ALLOW_THREADS
-		bsuccess = EvtNextPublisherId(enum_handle, allocated_size, buf, &returned_size);
-		Py_END_ALLOW_THREADS
-		if (bsuccess){
-			ret=PyWinObject_FromWCHAR(buf);
-			break;
-			}
-		err=GetLastError();
-		if (err==ERROR_INSUFFICIENT_BUFFER){
-			allocated_size=returned_size;
-			continue;
-			}
-		if (err==ERROR_NO_MORE_ITEMS){
-			Py_INCREF(Py_None);
-			ret=Py_None;
-			break;
-			}
-		PyWin_SetAPIError("EvtNextPublisherId", err);
-		break;
-	}
-	if (buf)
-		free(buf);
-	return ret;
-}
-PyCFunction pfnPyEvtNextPublisherId = (PyCFunction) PyEvtNextPublisherId;
-
-// @pyswig <o PyEVT_HANDLE>|EvtOpenPublisherMetadata|Opens a publisher to retrieve properties using <om win32evtlog.EvtGetPublisherMetadataProperty>
-// @comm Accepts keyword args
-static PyObject *PyEvtOpenPublisherMetadata(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"PublisherIdentity", "Session", "LogFilePath", "Locale", "Flags", NULL};
-	PyObject *obpublisher, *oblogfile=Py_None;
-	TmpWCHAR publisher, logfile;
-	EVT_HANDLE session = NULL;
-	LCID locale = 0;
-	DWORD flags = 0;
-	EVT_HANDLE ret;
-
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O&Okk:EvtOpenPublisherMetadata", keywords,
-		&obpublisher,	// @pyparm str|PublisherIdentity||Publisher id as returned by <om win32evtlog.EvtNextPublisherId>
-		PyWinObject_AsHANDLE, &session,	// @pyparm <o PyEVT_HANDLE>|Session|None|Handle to remote session, or None for local machine
-		&oblogfile,	// @pyparm str|LogFilePath|None|Log file from which to retrieve publisher, or None for locally registered publisher
-		&locale,	// @pyparm int|Locale|0|Locale to use for retrieved properties, use 0 for current locale
-		&flags))	// @pyparm int|Flags|0|Reserved, use only 0
-		return NULL;
-	if (!PyWinObject_AsWCHAR(obpublisher, &publisher, FALSE))
-		return NULL;
-	if (!PyWinObject_AsWCHAR(oblogfile, &logfile, TRUE))
-		return NULL;
-
-	Py_BEGIN_ALLOW_THREADS
-	ret = EvtOpenPublisherMetadata(session, publisher, logfile, locale, flags);
-	Py_END_ALLOW_THREADS
-	if (ret == NULL)
-		return PyWin_SetAPIError("EvtOpenPublisherMetadata");
-	return PyWinObject_FromEVT_HANDLE(ret);
-}
-PyCFunction pfnPyEvtOpenPublisherMetadata = (PyCFunction) PyEvtOpenPublisherMetadata;
-
-// @pyswig (object, int)|EvtGetPublisherMetadataProperty|Retrieves a property from an event publisher
-// @comm Accepts keyword args
-// @rdesc Returns the value and type of value (EvtVarType*)
-// Some properties return a handle (type EvtVarTypeEvtHandle) which can be iterated using
-// <om win32evtlog.EvtGetObjectArraySize> and <om win32evtlog.EvtGetObjectArrayProperty>.
-static PyObject *PyEvtGetPublisherMetadataProperty(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"PublisherMetadata", "PropertyId", "Flags", NULL};
-	EVT_HANDLE hpublisher;
-	EVT_PUBLISHER_METADATA_PROPERTY_ID prop_id;
-	DWORD flags = 0;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&i|k:EvtGetPublisherMetadataProperty", keywords,
-		PyWinObject_AsHANDLE, &hpublisher,	// @pyparm <o PyEVT_HANDLE>|PublisherMetadata||Publisher handle as returned by <om win32evtlog.EvtOpenPublisherMetadata>
-		&prop_id,	// @pyparm int|PropertyId||Property to retreive, EvtPublisherMetadata*
-		&flags))	// @pyparm int|Flags|0|Reserved, use only 0
-		return NULL;
-
-	PEVT_VARIANT val = NULL;
-	DWORD buf_size=0, buf_needed, err;
-	Py_BEGIN_ALLOW_THREADS
-	EvtGetPublisherMetadataProperty(hpublisher, prop_id, flags, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	err = GetLastError();
-	if (err != ERROR_INSUFFICIENT_BUFFER)
-		return PyWin_SetAPIError("EvtGetPublisherMetadataProperty", err);
-	val = (PEVT_VARIANT)malloc(buf_needed);
-	if (val == NULL)
-		return PyErr_Format(PyExc_MemoryError, "Unable to allocate %d bytes", buf_needed);
-	buf_size = buf_needed;
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtGetPublisherMetadataProperty(hpublisher, prop_id, flags, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	PyObject *ret = NULL;
-	if (!bsuccess)
-		PyWin_SetAPIError("EvtGetPublisherMetadataProperty");
-	else
-		ret = PyWinObject_FromEVT_VARIANT(val);
-	free(val);
-	return ret;
-}
-PyCFunction pfnPyEvtGetPublisherMetadataProperty = (PyCFunction) PyEvtGetPublisherMetadataProperty;
-
-// @pyswig <o PyEVT_HANDLE>|EvtOpenEventMetadataEnum|Enumerates the events that a publisher provides
-// @comm Accepts keyword args
-static PyObject *PyEvtOpenEventMetadataEnum(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"PublisherMetadata", "Flags", NULL};
-	EVT_HANDLE hpublisher, enum_handle;
-	DWORD flags=0;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&|k:EvtOpenEventMetadataEnum", keywords,
-		PyWinObject_AsHANDLE, &hpublisher,	// @pyparm <o PyEVT_HANDLE>|PublisherMetadata||Publisher handle as returned by <om win32evtlog.EvtOpenPublisherMetadata>
-		&flags))							// @pyparm int|Flags|0|Reserved, use only 0
-		return NULL;
-	Py_BEGIN_ALLOW_THREADS
-	enum_handle=EvtOpenEventMetadataEnum(hpublisher, flags);
-	Py_END_ALLOW_THREADS
-	if (enum_handle==NULL)
-		return PyWin_SetAPIError("EvtOpenEventMetadataEnum");
-	return PyWinObject_FromEVT_HANDLE(enum_handle);
-}
-PyCFunction pfnPyEvtOpenEventMetadataEnum = (PyCFunction) PyEvtOpenEventMetadataEnum;
-
-// @pyswig <o PyEVT_HANDLE>|EvtNextEventMetadata|Retrieves the next item from an event metadata enumeration
-// @comm Accepts keyword args
-static PyObject *PyEvtNextEventMetadata(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"EventMetadataEnum", "Flags", NULL};
-	EVT_HANDLE henum, ret;
-	DWORD flags = 0;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&|k:EvtNextEventMetadata", keywords,
-		PyWinObject_AsHANDLE, &henum,	// @pyparm <o PyEVT_HANDLE>|EventMetadataEnum||Enumeration handle as returned by <om win32evtlog.EvtOpenEventMetadataEnum>
-		&flags))						// @pyparm int|Flags|0|Reserved, use only 0
-		return NULL;
-
-	Py_BEGIN_ALLOW_THREADS
-	ret = EvtNextEventMetadata(henum, flags);
-	Py_END_ALLOW_THREADS
-	if (ret != NULL)
-		return PyWinObject_FromEVT_HANDLE(ret);
-	DWORD err=GetLastError();
-	if (err==ERROR_NO_MORE_ITEMS){
-		Py_INCREF(Py_None);
-		return Py_None;
-		}
-	return PyWin_SetAPIError("EvtNextEventMetadata");
-}
-PyCFunction pfnPyEvtNextEventMetadata = (PyCFunction) PyEvtNextEventMetadata;
-
-// @pyswig (object, int)|EvtGetEventMetadataProperty|Retrieves a property from an event publisher
-// @comm Accepts keyword args
-// @rdesc Returns the value and type of value (EvtVarType*).
-static PyObject *PyEvtGetEventMetadataProperty(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"EventMetadata", "PropertyId", "Flags", NULL};
-	EVT_HANDLE hevent;
-	EVT_EVENT_METADATA_PROPERTY_ID prop_id;
-	DWORD flags = 0;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&i|k:EvtGetEventMetadataProperty", keywords,
-		PyWinObject_AsHANDLE, &hevent,	// @pyparm <o PyEVT_HANDLE>|EventMetadata||Event metadata handle as returned by <om win32evtlog.EvtNextEventMetadata>
-		&prop_id,	// @pyparm int|PropertyId||Property to retreive, EventMetadata*
-		&flags))	// @pyparm int|Flags|0|Reserved, use only 0
-		return NULL;
-
-	PEVT_VARIANT val = NULL;
-	DWORD buf_size=0, buf_needed, err;
-	Py_BEGIN_ALLOW_THREADS
-	EvtGetEventMetadataProperty(hevent, prop_id, flags, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	err = GetLastError();
-	if (err != ERROR_INSUFFICIENT_BUFFER)
-		return PyWin_SetAPIError("EvtGetEventMetadataProperty", err);
-	val = (PEVT_VARIANT)malloc(buf_needed);
-	if (val == NULL)
-		return PyErr_Format(PyExc_MemoryError, "Unable to allocate %d bytes", buf_needed);
-	buf_size = buf_needed;
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtGetEventMetadataProperty(hevent, prop_id, flags, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	PyObject *ret = NULL;
-	if (!bsuccess)
-		PyWin_SetAPIError("EvtGetEventMetadataProperty");
-	else
-		ret = PyWinObject_FromEVT_VARIANT(val);
-	free(val);
-	return ret;
-}
-PyCFunction pfnPyEvtGetEventMetadataProperty = (PyCFunction) PyEvtGetEventMetadataProperty;
-
-// @pyswig (object, int)|EvtGetLogInfo|Retrieves log file or channel information 
-// @comm Accepts keyword args
-// @comm Returns the value and type of value (EvtVarType*)
-static PyObject *PyEvtGetLogInfo(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"Log", "PropertyId", NULL};
-	EVT_HANDLE hlog;
-	EVT_LOG_PROPERTY_ID prop_id;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&i:EvtGetLogInfo", keywords,
-		PyWinObject_AsHANDLE, &hlog,	// @pyparm <o PyEVT_HANDLE>|Log||Event log handle as returned by <om win32evtlog.EvtOpenLog>
-		&prop_id))	// @pyparm int|PropertyId||Property to retreive, EvtLog*
-		return NULL;
-
-	PEVT_VARIANT val = NULL;
-	DWORD buf_size=0, buf_needed, err;
-	Py_BEGIN_ALLOW_THREADS
-	EvtGetLogInfo(hlog, prop_id, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	err = GetLastError();
-	if (err != ERROR_INSUFFICIENT_BUFFER)
-		return PyWin_SetAPIError("EvtGetLogInfo", err);
-	val = (PEVT_VARIANT)malloc(buf_needed);
-	if (val == NULL)
-		return PyErr_Format(PyExc_MemoryError, "Unable to allocate %d bytes", buf_needed);
-	buf_size = buf_needed;
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtGetLogInfo(hlog, prop_id, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	PyObject *ret = NULL;
-	if (!bsuccess)
-		PyWin_SetAPIError("EvtGetLogInfo");
-	else
-		ret = PyWinObject_FromEVT_VARIANT(val);
-	free(val);
-	return ret;
-}
-PyCFunction pfnPyEvtGetLogInfo = (PyCFunction) PyEvtGetLogInfo;
-
-// @pyswig (object, int)|EvtGetEventInfo|Retrieves information about the source of an event
-// @comm Accepts keyword args
-// @comm Returns the value and type of value (EvtVarType*)
-static PyObject *PyEvtGetEventInfo(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"Event", "PropertyId", NULL};
-	EVT_HANDLE hevent;
-	EVT_EVENT_PROPERTY_ID prop_id;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&i:EvtGetEventInfo", keywords,
-		PyWinObject_AsHANDLE, &hevent,	// @pyparm <o PyEVT_HANDLE>|Event||Handle to an event
-		&prop_id))	// @pyparm int|PropertyId||Property to retreive, EvtEvent*
-		return NULL;
-
-	PEVT_VARIANT val = NULL;
-	DWORD buf_size=0, buf_needed, err;
-	Py_BEGIN_ALLOW_THREADS
-	EvtGetEventInfo(hevent, prop_id, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	err = GetLastError();
-	if (err != ERROR_INSUFFICIENT_BUFFER)
-		return PyWin_SetAPIError("EvtGetEventInfo", err);
-	val = (PEVT_VARIANT)malloc(buf_needed);
-	if (val == NULL)
-		return PyErr_Format(PyExc_MemoryError, "Unable to allocate %d bytes", buf_needed);
-	buf_size = buf_needed;
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtGetEventInfo(hevent, prop_id, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	PyObject *ret = NULL;
-	if (!bsuccess)
-		PyWin_SetAPIError("EvtGetEventInfo");
-	else
-		ret = PyWinObject_FromEVT_VARIANT(val);
-	free(val);
-	return ret;
-}
-PyCFunction pfnPyEvtGetEventInfo = (PyCFunction) PyEvtGetEventInfo;
-
-// @pyswig int|EvtGetObjectArraySize|Returns the size of an array of event objects
-// @comm Accepts keyword args
-static PyObject *PyEvtGetObjectArraySize(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"ObjectArray", NULL};
-	EVT_HANDLE harray;
-	DWORD size;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&:EvtGetObjectArraySize", keywords,
-		PyWinObject_AsHANDLE, &harray))	// @pyparm <o PyEVT_HANDLE>|ObjectArray||Handle to an array of objects as returned by <om win32evtlog.EvtGetPublisherMetadataProperty> for some ProperyId's
-		return NULL;
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtGetObjectArraySize(harray, &size);
-	Py_END_ALLOW_THREADS
-	if (!bsuccess)
-		return PyWin_SetAPIError("EvtGetObjectArraySize");
-	return PyLong_FromUnsignedLong(size);
-}
-PyCFunction pfnPyEvtGetObjectArraySize = (PyCFunction) PyEvtGetObjectArraySize;
-
-// @pyswig (object, int)|EvtGetObjectArrayProperty|Retrieves an item from an object array
-// @comm Accepts keyword args
-// @rdesc Returns the value and type of value (EvtVarType*)
-static PyObject *PyEvtGetObjectArrayProperty(PyObject *self, PyObject *args, PyObject *kwargs)
-{
-	static char *keywords[]={"ObjectArray", "PropertyId", "ArrayIndex", "Flags", NULL};
-	EVT_HANDLE harray;
-	DWORD prop_id, index, flags = 0;
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&kk|k:EvtGetObjectArrayProperty", keywords,
-		PyWinObject_AsHANDLE, &harray,	// @pyparm <o PyEVT_HANDLE>|ObjectArray||Handle to an array of objects as returned by <om win32evtlog.EvtGetPublisherMetadataProperty> for some ProperyId's
-		&prop_id,	// @pyparm int|PropertyId||Type of property contained in the array
-		&index,		// @pyparm int|ArrayIndex||Zero-based index of item to retrieve
-		&flags))	// @pyparm int|Flags|0|Reserved, use only 0
-		return NULL;
-
-	PEVT_VARIANT val = NULL;
-	DWORD buf_size=0, buf_needed, err;
-	Py_BEGIN_ALLOW_THREADS
-	EvtGetObjectArrayProperty(harray, prop_id, index, flags, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	err = GetLastError();
-	if (err != ERROR_INSUFFICIENT_BUFFER)
-		return PyWin_SetAPIError("EvtGetObjectArrayProperty", err);
-	val = (PEVT_VARIANT)malloc(buf_needed);
-	if (val == NULL)
-		return PyErr_Format(PyExc_MemoryError, "Unable to allocate %d bytes", buf_needed);
-	buf_size = buf_needed;
-	BOOL bsuccess;
-	Py_BEGIN_ALLOW_THREADS
-	bsuccess = EvtGetObjectArrayProperty(harray, prop_id, index, flags, buf_size, val, &buf_needed);
-	Py_END_ALLOW_THREADS
-	PyObject *ret = NULL;
-	if (!bsuccess)
-		PyWin_SetAPIError("EvtGetObjectArrayProperty");
-	else
-		ret = PyWinObject_FromEVT_VARIANT(val);
-	free(val);
-	return ret;
-}
-PyCFunction pfnPyEvtGetObjectArrayProperty = (PyCFunction) PyEvtGetObjectArrayProperty;
 %}
-
 
 %native (EvtOpenChannelEnum) pfnPyEvtOpenChannelEnum;
 %native (EvtNextChannelPath) pfnPyEvtNextChannelPath;
@@ -1603,21 +965,6 @@ PyCFunction pfnPyEvtGetObjectArrayProperty = (PyCFunction) PyEvtGetObjectArrayPr
 %native (EvtSubscribe) pfnPyEvtSubscribe;
 %native (EvtCreateBookmark) pfnPyEvtCreateBookmark;
 %native (EvtUpdateBookmark) pfnPyEvtUpdateBookmark;
-%native (EvtGetChannelConfigProperty) pfnPyEvtGetChannelConfigProperty;
-%native (EvtOpenChannelConfig) pfnPyEvtOpenChannelConfig;
-%native (EvtOpenSession) pfnPyEvtOpenSession;
-%native (EvtOpenPublisherEnum) pfnPyEvtOpenPublisherEnum;
-%native (EvtNextPublisherId) pfnPyEvtNextPublisherId;
-%native (EvtOpenPublisherMetadata) pfnPyEvtOpenPublisherMetadata;
-%native (EvtGetPublisherMetadataProperty) pfnPyEvtGetPublisherMetadataProperty;
-%native (EvtOpenEventMetadataEnum) pfnPyEvtOpenEventMetadataEnum;
-%native (EvtNextEventMetadata) pfnPyEvtNextEventMetadata;
-%native (EvtGetEventMetadataProperty) pfnPyEvtGetEventMetadataProperty;
-%native (EvtGetLogInfo) pfnPyEvtGetLogInfo;
-%native (EvtGetEventInfo) pfnPyEvtGetEventInfo;
-%native (EvtGetObjectArraySize) pfnPyEvtGetObjectArraySize;
-%native (EvtGetObjectArrayProperty) pfnPyEvtGetObjectArrayProperty;
-
 
 %init %{
     for (PyMethodDef *pmd = win32evtlogMethods;pmd->ml_name;pmd++)
@@ -1635,20 +982,6 @@ PyCFunction pfnPyEvtGetObjectArrayProperty = (PyCFunction) PyEvtGetObjectArrayPr
 			||(strcmp(pmd->ml_name, "EvtSubscribe")==0)
 			||(strcmp(pmd->ml_name, "EvtCreateBookmark")==0)
 			||(strcmp(pmd->ml_name, "EvtUpdateBookmark")==0)
-			||(strcmp(pmd->ml_name, "EvtGetChannelConfigProperty")==0)
-			||(strcmp(pmd->ml_name, "EvtOpenChannelConfig")==0)
-			||(strcmp(pmd->ml_name, "EvtOpenSession")==0)
-			||(strcmp(pmd->ml_name, "EvtOpenPublisherEnum")==0)
-			||(strcmp(pmd->ml_name, "EvtNextPublisherId")==0)
-			||(strcmp(pmd->ml_name, "EvtOpenPublisherMetadata")==0)
-			||(strcmp(pmd->ml_name, "EvtGetPublisherMetadataProperty")==0)
-			||(strcmp(pmd->ml_name, "EvtOpenEventMetadataEnum")==0)
-			||(strcmp(pmd->ml_name, "EvtNextEventMetadata")==0)
-			||(strcmp(pmd->ml_name, "EvtGetEventMetadataProperty")==0)
-			||(strcmp(pmd->ml_name, "EvtGetLogInfo")==0)
-			||(strcmp(pmd->ml_name, "EvtGetEventInfo")==0)
-			||(strcmp(pmd->ml_name, "EvtGetObjectArraySize")==0)
-			||(strcmp(pmd->ml_name, "EvtGetObjectArrayProperty")==0)
 			){
 			pmd->ml_flags = METH_VARARGS | METH_KEYWORDS;
 			}
@@ -1694,123 +1027,3 @@ PyCFunction pfnPyEvtGetObjectArrayProperty = (PyCFunction) PyEvtGetObjectArrayPr
 // EVT_SUBSCRIBE_NOTIFY_ACTION - passed as first parm to EvtSubscribe callback
 #define EvtSubscribeActionError EvtSubscribeActionError
 #define EvtSubscribeActionDeliver EvtSubscribeActionDeliver
-
-// EVT_VARIANT_TYPE
-#define EvtVarTypeNull EvtVarTypeNull
-#define EvtVarTypeString EvtVarTypeString
-#define EvtVarTypeAnsiString EvtVarTypeAnsiString
-#define EvtVarTypeSByte EvtVarTypeSByte
-#define EvtVarTypeByte EvtVarTypeByte
-#define EvtVarTypeInt16 EvtVarTypeInt16
-#define EvtVarTypeUInt16 EvtVarTypeUInt16
-#define EvtVarTypeInt32 EvtVarTypeInt32
-#define EvtVarTypeUInt32 EvtVarTypeUInt32
-#define EvtVarTypeInt64 EvtVarTypeInt64
-#define EvtVarTypeUInt64 EvtVarTypeUInt64
-#define EvtVarTypeSingle EvtVarTypeSingle
-#define EvtVarTypeDouble EvtVarTypeDouble
-#define EvtVarTypeBoolean EvtVarTypeBoolean
-#define EvtVarTypeBinary EvtVarTypeBinary
-#define EvtVarTypeGuid EvtVarTypeGuid
-#define EvtVarTypeSizeT EvtVarTypeSizeT
-#define EvtVarTypeFileTime EvtVarTypeFileTime
-#define EvtVarTypeSysTime EvtVarTypeSysTime
-#define EvtVarTypeSid EvtVarTypeSid
-#define EvtVarTypeHexInt32 EvtVarTypeHexInt32
-#define EvtVarTypeHexInt64 EvtVarTypeHexInt64
-#define EvtVarTypeEvtHandle EvtVarTypeEvtHandle
-#define EvtVarTypeEvtXml EvtVarTypeEvtXml
-
-// EVT_CHANNEL_CONFIG_PROPERTY_ID
-#define EvtChannelConfigEnabled EvtChannelConfigEnabled
-#define EvtChannelConfigIsolation EvtChannelConfigIsolation
-#define EvtChannelConfigType EvtChannelConfigType
-#define EvtChannelConfigOwningPublisher EvtChannelConfigOwningPublisher
-#define EvtChannelConfigClassicEventlog EvtChannelConfigClassicEventlog
-#define EvtChannelConfigAccess EvtChannelConfigAccess
-#define EvtChannelLoggingConfigRetention EvtChannelLoggingConfigRetention
-#define EvtChannelLoggingConfigAutoBackup EvtChannelLoggingConfigAutoBackup
-#define EvtChannelLoggingConfigMaxSize EvtChannelLoggingConfigMaxSize
-#define EvtChannelLoggingConfigLogFilePath EvtChannelLoggingConfigLogFilePath
-#define EvtChannelPublishingConfigLevel EvtChannelPublishingConfigLevel
-#define EvtChannelPublishingConfigKeywords EvtChannelPublishingConfigKeywords
-#define EvtChannelPublishingConfigControlGuid EvtChannelPublishingConfigControlGuid
-#define EvtChannelPublishingConfigBufferSize EvtChannelPublishingConfigBufferSize
-#define EvtChannelPublishingConfigMinBuffers EvtChannelPublishingConfigMinBuffers
-#define EvtChannelPublishingConfigMaxBuffers EvtChannelPublishingConfigMaxBuffers
-#define EvtChannelPublishingConfigLatency EvtChannelPublishingConfigLatency
-#define EvtChannelPublishingConfigClockType EvtChannelPublishingConfigClockType
-#define EvtChannelPublishingConfigSidType EvtChannelPublishingConfigSidType
-#define EvtChannelPublisherList EvtChannelPublisherList
-#ifdef EvtChannelPublishingConfigFileMax // this is only in SDK versions 7 and up
-#define EvtChannelPublishingConfigFileMax EvtChannelPublishingConfigFileMax
-#endif
-#define EvtChannelConfigPropertyIdEND EvtChannelConfigPropertyIdEND
-
-// Login type used with EvtOpenSession
-#define EvtRpcLogin EvtRpcLogin
-
-// Login flags using in Login param of EvtOpenSession
-#define EvtRpcLoginAuthDefault EvtRpcLoginAuthDefault
-#define EvtRpcLoginAuthNegotiate EvtRpcLoginAuthNegotiate
-#define EvtRpcLoginAuthKerberos EvtRpcLoginAuthKerberos
-#define EvtRpcLoginAuthNTLM EvtRpcLoginAuthNTLM
-
-// EVT_PUBLISHER_METADATA_PROPERTY_ID
-#define EvtPublisherMetadataPublisherGuid EvtPublisherMetadataPublisherGuid
-#define EvtPublisherMetadataResourceFilePath EvtPublisherMetadataResourceFilePath
-#define EvtPublisherMetadataParameterFilePath EvtPublisherMetadataParameterFilePath
-#define EvtPublisherMetadataMessageFilePath EvtPublisherMetadataMessageFilePath
-#define EvtPublisherMetadataHelpLink EvtPublisherMetadataHelpLink
-#define EvtPublisherMetadataPublisherMessageID EvtPublisherMetadataPublisherMessageID
-#define EvtPublisherMetadataChannelReferences EvtPublisherMetadataChannelReferences
-#define EvtPublisherMetadataChannelReferencePath EvtPublisherMetadataChannelReferencePath
-#define EvtPublisherMetadataChannelReferenceIndex EvtPublisherMetadataChannelReferenceIndex
-#define EvtPublisherMetadataChannelReferenceID EvtPublisherMetadataChannelReferenceID
-#define EvtPublisherMetadataChannelReferenceFlags EvtPublisherMetadataChannelReferenceFlags
-#define EvtPublisherMetadataChannelReferenceMessageID EvtPublisherMetadataChannelReferenceMessageID
-#define EvtPublisherMetadataLevels EvtPublisherMetadataLevels
-#define EvtPublisherMetadataLevelName EvtPublisherMetadataLevelName
-#define EvtPublisherMetadataLevelValue EvtPublisherMetadataLevelValue
-#define EvtPublisherMetadataLevelMessageID EvtPublisherMetadataLevelMessageID
-#define EvtPublisherMetadataTasks EvtPublisherMetadataTasks
-#define EvtPublisherMetadataTaskName EvtPublisherMetadataTaskName
-#define EvtPublisherMetadataTaskEventGuid EvtPublisherMetadataTaskEventGuid
-#define EvtPublisherMetadataTaskValue EvtPublisherMetadataTaskValue
-#define EvtPublisherMetadataTaskMessageID EvtPublisherMetadataTaskMessageID
-#define EvtPublisherMetadataOpcodes EvtPublisherMetadataOpcodes
-#define EvtPublisherMetadataOpcodeName EvtPublisherMetadataOpcodeName
-#define EvtPublisherMetadataOpcodeValue EvtPublisherMetadataOpcodeValue
-#define EvtPublisherMetadataOpcodeMessageID EvtPublisherMetadataOpcodeMessageID
-#define EvtPublisherMetadataKeywords EvtPublisherMetadataKeywords
-#define EvtPublisherMetadataKeywordName EvtPublisherMetadataKeywordName
-#define EvtPublisherMetadataKeywordValue EvtPublisherMetadataKeywordValue
-#define EvtPublisherMetadataKeywordMessageID EvtPublisherMetadataKeywordMessageID
-#define EvtPublisherMetadataPropertyIdEND EvtPublisherMetadataPropertyIdEND
-
-// EVT_EVENT_METADATA_PROPERTY_ID used with EvtGetEventMetadataProperty
-#define EventMetadataEventID EventMetadataEventID
-#define EventMetadataEventVersion EventMetadataEventVersion
-#define EventMetadataEventChannel EventMetadataEventChannel
-#define EventMetadataEventLevel EventMetadataEventLevel
-#define EventMetadataEventOpcode EventMetadataEventOpcode
-#define EventMetadataEventTask EventMetadataEventTask
-#define EventMetadataEventKeyword EventMetadataEventKeyword
-#define EventMetadataEventMessageID EventMetadataEventMessageID
-#define EventMetadataEventTemplate EventMetadataEventTemplate
-#define EvtEventMetadataPropertyIdEND EvtEventMetadataPropertyIdEND
-
-// EVT_LOG_PROPERTY_ID, used with EvtGetLogInfo
-#define EvtLogCreationTime EvtLogCreationTime
-#define EvtLogLastAccessTime EvtLogLastAccessTime
-#define EvtLogLastWriteTime EvtLogLastWriteTime
-#define EvtLogFileSize EvtLogFileSize
-#define EvtLogAttributes EvtLogAttributes
-#define EvtLogNumberOfLogRecords EvtLogNumberOfLogRecords
-#define EvtLogOldestRecordNumber EvtLogOldestRecordNumber
-#define EvtLogFull EvtLogFull
-
-// EVT_EVENT_PROPERTY_ID used with EvtGetEventInfo
-#define EvtEventQueryIDs EvtEventQueryIDs
-#define EvtEventPath EvtEventPath
-#define EvtEventPropertyIdEND EvtEventPropertyIdEND

@@ -53,11 +53,6 @@ generates Windows .hlp files.
 #include "PyIOleWindow.h"
 #include "PyIGlobalInterfaceTable.h"
 #include "PyIEnumString.h"
-#include "PyIServerSecurity.h"
-#include "PyIClientSecurity.h"
-#include "PyIContext.h"
-#include "PyIEnumContextProps.h"
-#include "PyICancelMethodCalls.h"
 
 //PyObject *CLSIDMapping;  // Maps CLSIDs onto PyClassObjects
 PyObject *g_obPyCom_MapIIDToType = NULL; // map of IID's to client types.
@@ -273,8 +268,8 @@ static const PyCom_InterfaceSupportInfo g_interfaceSupportData[] =
 #endif // NO_PYCOM_IENUMGUID
 	PYCOM_INTERFACE_CLIENT_ONLY( EnumMoniker),
 #ifndef NO_PYCOM_ENUMSTATPROPSTG
-	PYCOM_INTERFACE_FULL( EnumSTATPROPSTG),
-	PYCOM_INTERFACE_FULL( EnumSTATPROPSETSTG),
+	PYCOM_INTERFACE_CLIENT_ONLY( EnumSTATPROPSTG),
+	PYCOM_INTERFACE_CLIENT_ONLY( EnumSTATPROPSETSTG),
 #endif // NO_PYCOM_ENUMSTATPROPSTG
 	PYCOM_INTERFACE_FULL       ( EnumSTATSTG),
 	PYCOM_INTERFACE_FULL       ( EnumString),
@@ -294,10 +289,10 @@ static const PyCom_InterfaceSupportInfo g_interfaceSupportData[] =
 	PYCOM_INTERFACE_FULL       ( PersistStreamInit),
 	PYCOM_INTERFACE_FULL       ( PropertyBag),
 #ifndef NO_PYCOM_IPROPERTYSETSTORAGE
-	PYCOM_INTERFACE_FULL( PropertySetStorage),
+	PYCOM_INTERFACE_CLIENT_ONLY( PropertySetStorage),
 #endif // NO_PYCOM_IPROPERTYSETSTORAGE
 #ifndef NO_PYCOM_IPROPERTYSTORAGE
-	PYCOM_INTERFACE_FULL( PropertyStorage),
+	PYCOM_INTERFACE_CLIENT_ONLY( PropertyStorage),
 #endif // NO_PYCOM_IPROPERTYSTORAGE
 
 #ifndef NO_PYCOM_IPROVIDECLASSINFO
@@ -315,14 +310,6 @@ static const PyCom_InterfaceSupportInfo g_interfaceSupportData[] =
 	PYCOM_INTERFACE_IID_ONLY   ( StdMarshalInfo ),
 	PYCOM_INTERFACE_FULL       ( Storage),
 	PYCOM_INTERFACE_FULL       ( Stream),
-	PYCOM_INTERFACE_FULL       ( ServerSecurity),
-	PYCOM_INTERFACE_FULL       ( ClientSecurity),
-	PYCOM_INTERFACE_CLIENT_ONLY( Context),
-	PYCOM_INTERFACE_CLIENT_ONLY( EnumContextProps),
-	PYCOM_INTERFACE_FULL	   ( CancelMethodCalls),
-	// No wrapper for IAccessControl yet, but you can still get the system implementation
-	//  by calling pythoncom.CoCreateInstance with IID_IUnknown as the returned interface
-	PYCOM_INTERFACE_CLSID_ONLY (DCOMAccessControl),
 
 	// NULL, Unknown and dispatch special cases.
 	{ &IID_NULL, "Null", "IID_NULL", NULL, NULL},

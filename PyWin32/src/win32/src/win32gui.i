@@ -6032,6 +6032,8 @@ HWND ChildWindowFromPointEx(HWND INPUT, POINT INPUT, int flags);
 
 // Sorting for controls
 %{
+#if (PY_VERSION_HEX >= 0x02030000) // PyGILState only in 2.3+
+
 // Callbacks
 struct PySortCallback {
 	PyObject *fn;
@@ -6108,12 +6110,21 @@ PyListView_SortItems(PyObject *self, PyObject *args)
 	Py_INCREF(Py_None);
 	return Py_None;
 }
+#else // PYVERSION
+static PyObject *PyListView_SortItems(PyObject *self, PyObject *args)
+{
+	PyErr_SetString(PyExc_NotImplementedError,
+					"This requires Python 2.3 or greater");
+	return NULL;
+}
+#endif // PYVERSION 2.3+
 %}
 
 %native (ListView_SortItems) PyListView_SortItems;
 
 #ifndef MS_WINCE
 %{
+#if (PY_VERSION_HEX >= 0x02030000) // PyGILState only in 2.3+
 // @pyswig |ListView_SortItemsEx|Uses an application-defined comparison function to sort the items of a list view control.
 static PyObject *
 PyListView_SortItemsEx(PyObject *self, PyObject *args)
@@ -6143,6 +6154,14 @@ PyListView_SortItemsEx(PyObject *self, PyObject *args)
 	Py_INCREF(Py_None);
 	return Py_None;
 }
+#else // PYVERSION
+static PyObject *PyListView_SortItemsEx(PyObject *self, PyObject *args)
+{
+	PyErr_SetString(PyExc_NotImplementedError,
+	                "This requires Python 2.3 or greater");
+	return NULL;
+}
+#endif // PYVERSION
 %}
 %native (ListView_SortItemsEx) PyListView_SortItemsEx;
 #endif	// !MS_WINCE
@@ -7521,11 +7540,3 @@ PyObject *PyRegisterDeviceNotification(PyObject *self, PyObject *args)
 // It is generally not necessary to call this function manually, but in some cases,
 // handle values may be extracted via the struct module and need to be closed explicitly.
 BOOLAPI UnregisterDeviceNotification(HANDLE);
-
-// @pyswig |RegisterHotKey|Registers a hotkey for a window
-// @pyseeapi RegisterHotKey
-// @pyparm <o PyHANDLE>|hWnd||Handle to window that will receive WM_HOTKEY messages
-// @pyparm int|id||Unique id to be used for the hot key
-// @pyparm int|Modifiers||Control keys, combination of win32con.MOD_*
-// @pyparm int|vk||Virtual key code
-BOOLAPI RegisterHotKey(HWND, int, UINT, UINT);
