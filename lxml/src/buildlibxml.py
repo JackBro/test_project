@@ -24,7 +24,7 @@ except:
 # use pre-built libraries on Windows
 
 def download_and_extract_zlatkovic_binaries(destdir):
-    url = 'http://xmlsoft.org/sources/win32/'
+    url = 'ftp://xmlsoft.org/libxml2/win32/'
     libs = dict(
         libxml2  = None,
         libxslt  = None,
@@ -34,7 +34,6 @@ def download_and_extract_zlatkovic_binaries(destdir):
     for fn in ftp_listdir(url):
         for libname in libs:
             if fn.startswith(libname):
-                assert libs[libname] is None, 'duplicate listings?'
                 assert fn.endswith('.win32.zip')
                 libs[libname] = fn
 
