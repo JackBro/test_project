@@ -24,7 +24,7 @@ except:
 # use pre-built libraries on Windows
 
 def download_and_extract_zlatkovic_binaries(destdir):
-    url = 'ftp://ftp.zlatkovic.com/pub/libxml/'
+    url = 'http://xmlsoft.org/sources/win32/'
     libs = dict(
         libxml2  = None,
         libxslt  = None,
